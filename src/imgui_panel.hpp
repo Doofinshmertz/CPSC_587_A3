@@ -27,4 +27,15 @@ namespace imgui_panel {
 
 	// lambda function
 	extern std::function<void(void)> draw;
+
+
+	// added stuff
+	// slover
+	enum class SolverType{JT, DLS};
+	extern SolverType solver_type;
+	extern int max_iterations;
+	extern float tolerance;
+	extern float epsilon;
+	extern float max_alpha;
+	extern float lambda;
 } // namespace panel

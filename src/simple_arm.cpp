@@ -164,7 +164,7 @@ namespace rigging {
             // get the position of the end effector
             glm::vec3 e = endEffectorPosition();
             // ensure that the target is within reachable distance
-            glm::vec3 e_e = getProjectedTarget(e_t, e, length);
+            glm::vec3 e_e = getProjectedTarget(e_t, e, alpha_max);
             // get the displacement from the target
             glm::vec3 delta_e = e_e - e;
             // calculate the angles update step
@@ -173,8 +173,6 @@ namespace rigging {
             angles = angles + delta_angles;
             iteration++;
         }
-
-        printf("solved in %d iterations\n", iteration);
     }
 
     SimpleArm::joint_angles SimpleArm::solveAnglesJT(glm::vec3 delta_e, float epsilon, float alpha_max)
@@ -220,6 +218,8 @@ namespace rigging {
             length += lengths[i];
         }
 
+        e_t = getProjectedTarget(e_t, glm::vec3(0.0f, 0.0f, 0.0f), length);
+
         // iteratively move the end until it is within tolerance of the target, or the maximum number of iterations has been exceeded
         while (tolerance < glm::length(delta_angles) && iteration < max_iterations)
         {
@@ -227,10 +227,8 @@ namespace rigging {
             applyConstraints();
             // get the position of the end effector
             glm::vec3 e = endEffectorPosition();
-            // ensure that the target is within reachable distance
-            glm::vec3 e_e = getProjectedTarget(e_t, e, length);
             // get the displacement from the target
-            glm::vec3 delta_e = e_e - e;
+            glm::vec3 delta_e = e_t - e;
             // calculate the angles update step
             delta_angles = solveAnglesDLS(delta_e, epsilon, lambda);
             // update the angles
@@ -238,7 +236,6 @@ namespace rigging {
             iteration++;
         }
 
-        printf("solved in %d iterations\n", iteration);
     }
 
     SimpleArm::joint_angles SimpleArm::solveAnglesDLS(glm::vec3 delta_e, float epsilon, float lambda)
@@ -247,7 +244,6 @@ namespace rigging {
         SimpleArm::jacobian j = calcJacobian(epsilon);
 
         SimpleArm::jacobian_inv m(1.0f);
-        printJacobianInv(m);
         m = glm::transpose(j)*j + m * lambda*lambda;
         SimpleArm::joint_angles delta_angles = glm::inverse(m)*(glm::transpose(j)*delta_e);
 

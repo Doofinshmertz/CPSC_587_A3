@@ -153,7 +153,14 @@ int main(void) {
 		// -------------------- ---------- -------------------- //
 		if (imgui_panel::isIK) {
 			// TODO: your IK process(s) should be here
-			arm.moveToPositionDLS(target, 0.001f, 0.001f, 10.0f, 100);
+			if(imgui_panel::solver_type == imgui_panel::SolverType::JT)
+			{
+				arm.moveToPositionJT(target, imgui_panel::epsilon, imgui_panel::tolerance, imgui_panel::max_alpha, static_cast<size_t>(imgui_panel::max_iterations));
+			}
+			else
+			{
+				arm.moveToPositionDLS(target, imgui_panel::epsilon, imgui_panel::tolerance, imgui_panel::lambda, static_cast<size_t>(imgui_panel::max_iterations));
+			}
 			arm.applyConstraints();// Called somewhere in here
 		}
 		else { //Simply apply the inputs

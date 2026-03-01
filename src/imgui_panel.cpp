@@ -5,6 +5,14 @@ namespace imgui_panel {
 	bool showPanel = true;
 	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
+	// solver stuff
+	int max_iterations = 100;
+	float tolerance = 0.001f;
+	float epsilon = 0.001f;
+	float max_alpha = 10.0f;
+	float lambda = 0.5f;
+	SolverType solver_type = SolverType::JT;
+
 	// rig
 	rigging::SimpleArm::bone_lengths bone_lengths				= rigging::SimpleArm::defaultBoneLengths();
 	rigging::SimpleArm::joint_angles joint_angles				= rigging::SimpleArm::defaultJointAngles();
@@ -37,6 +45,36 @@ namespace imgui_panel {
 			ImGui::Separator();
 
 			ImGui::Checkbox("Use Inverse Kinematics", &isIK);
+
+			// if using inverse kinematics then show the controll pannel for it
+			if(isIK)
+			{
+				// controll the maximum number of iterations
+				ImGui::DragInt("Max Iterations", &max_iterations, 1, 1, 1000);
+				// controll the tolerance
+				ImGui::DragFloat("Tolerance", &tolerance, 0.001f, 0.001f, 1.0f, "%.4f");
+				// controll the finite step
+				ImGui::DragFloat("Finite step (rad)", &epsilon, 0.001f, 0.0001f, 0.1f, "%.4f");
+				// select the solver type
+				static constexpr const char* solverTypeLables[]={"Jacobian Transpose", "Damped Least Squares"};
+				int solver = static_cast<int>(solver_type);
+				if(ImGui::Combo("Solver Type", &solver, solverTypeLables, 2))
+				{
+					solver_type = static_cast<SolverType>(solver);
+				}
+
+				// give different options depending on the solver type
+				if(solver_type == SolverType::JT)
+				{
+					ImGui::DragFloat("Alpha max", &max_alpha, 0.001f, 0.001f, 100.0f, "%0.4f"); 
+				}
+				else
+				{
+					ImGui::DragFloat("lambda", &lambda, 0.01f, 0.01f, 10.0f, "%0.4f");
+				}
+			}
+
+
 			ImGui::Checkbox("Use Skinning Model", &isLBS);
 
 			ImGui::Spacing();
