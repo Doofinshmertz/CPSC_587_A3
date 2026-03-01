@@ -153,6 +153,7 @@ int main(void) {
 		// -------------------- ---------- -------------------- //
 		if (imgui_panel::isIK) {
 			// TODO: your IK process(s) should be here
+			arm.moveToPositionDLS(target, 0.001f, 0.001f, 10.0f, 100);
 			arm.applyConstraints();// Called somewhere in here
 		}
 		else { //Simply apply the inputs

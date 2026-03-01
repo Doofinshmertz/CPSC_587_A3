@@ -50,7 +50,7 @@ namespace rigging {
 	//    It is not associated with a joint and has no angle DOF of its own.
 	// -----------------------------------------------------------------------------
 	struct SimpleArm {
-		static constexpr size_t kBones  = 2;			// TODO: Students change this to 3.
+		static constexpr size_t kBones  = 3;			// TODO: Students change this to 3.
 		static constexpr size_t kJoints = kBones;		// Joint at base of each bone (NOT TIP)
 		static constexpr size_t kAngles = kBones + 1;	// Root joint has 2 DOF, rest have 1 DOF
 
@@ -64,9 +64,8 @@ namespace rigging {
 		using joint_angles			= glm::vec<kAngles, float>;	// Our degrees of freedom of IK
 		using joint_angle_bounds	= std::array<Bounds, kAngles>;	// How to treat the angles on the bounds (clamp vs wrap)
 		using bone_lengths			= std::array<float, kBones>;	// Not DOFs, just defining bone lengths
-
-		using jacobian = glm::mat<kAngles, 3, float>;
-		
+		using jacobian				= glm::mat<kAngles, 3, float>; // the jacobian matrix data structure
+		using jacobian_inv 			= glm::mat<kAngles, kAngles, float>; // for holding the matrix in the damped least squares approximation
 		// TODO: Update these when changing kBones
 		static joint_angles			defaultJointAngles();
 		static joint_angle_bounds	defaultJointAngleBounds();
@@ -84,6 +83,43 @@ namespace rigging {
 
 		glm::vec3 jointPosition(size_t joint_index) const;	// joint_index in [0..kJoints-1]
 		glm::vec3 endEffectorPosition() const;
+
+		/**
+		 * jacobian transpose inverse kinematics function
+		 * uses the jacobian transpose to attempt to move the end effector to the target position
+		 */
+		void moveToPositionJT(glm::vec3 e_t, float epsilon, float tolerance, float alpha_max, size_t max_iterations);
+
+		/**
+		 * use the damped least squares to attempt to move the end effector to  the target position
+		 */
+		void moveToPositionDLS(glm::vec3 e_t, float epsilon, float tolerance, float lambda, size_t max_iterations);
+
+
+		/**
+		 * project the target so that is a maximum distance of "max_delta" away from the current position
+		 */
+		glm::vec3 getProjectedTarget(glm::vec3 e_t, glm::vec3 e, float max_delta);
+
+		/**
+		 *  Use the jacobian transpose to solve for the angles 
+		 */
+		joint_angles solveAnglesJT(glm::vec3 delta_e, float epsilon, float alpha_max);
+
+		/**
+		 * Use the damped least squares methode to solve for the angles
+		 */
+		joint_angles solveAnglesDLS(glm::vec3 delta_e, float epsilon, float lambda);
+
+		/**
+		 * calculates the jacobian of the system using the current arm position and given epsilon value
+		 * @param epsilon the differencing amount for taking the numerical deriviative of the system with respect to the angles
+		 */
+		jacobian calcJacobian(float epsilon);
+
+		// debuggin utility
+		void printJacobian(jacobian j);
+		void printJacobianInv(jacobian_inv j);
 
 		void applyConstraints();
 
