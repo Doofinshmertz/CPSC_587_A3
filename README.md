@@ -1,55 +1,88 @@
 
 # Implementation Methods
-CPSC 587 Assignment 1,
+CPSC 587 Assignment 3,
 Holden Holzer, holden.holzer@ucalgary.ca
 ## AI Statement
 No AI was used. 
-## Hermite Curve
-For this assignment, the curve used to interpolate the control points was the Cubic Hermite spline. The definition of which was obtained from the Assignment 1 Technical Specification: $$ C(u) = \vec{p}_i(2u^3 - 3u^2 + 1) \\ + \vec{t}_i(u^3 - 2u^2 + u) 
-\\ + \vec{p}_{i+1}(-2u^3 + 3u^2) \\ + \vec{t}_{i+1}(u^3 - u^2)$$
-Where u is the **local** u value for the curve, $\vec{p}_i$ is the starting point, $\vec{t}_i$ is the starting tangent, $\vec{p}_{i+1}$ is the end point, and $\vec{t}_{i+1}$ is the end tangent. The curve guarantees a $C^1$ continuity and passes through the control points. The tangents are found by numerical differentiation via the provided function: $$\vec{t}_i = \frac{\vec{p}_{i+1} - \vec{p}_{i-1}}{2}$$
-When evaluating the curve, the *u* value must be the interpolation factor between the two consecutive points, this is different from the global *U* value for the entire curve. The local *u* value is found by the following method:
-1. find the indices of the control points using $i = floor ((n-1)\cdot U)$ where n is the number of control points
-2. find the small u value using $ u = (n-1)\cdot U - floor ((n-1)\cdot U)$
-## Arc Length Parameterization Table
-The Arc Length Parameterization Table was created using the algorithm outlined in the Assignment 1 Technical Document. A summary as follows: 
-1. Move along the curve using a small $\Delta{u}$ value, keeping track of the current curve length that has been traversed as $s$.
-2. If the traversed length $s$ exceeds some $\Delta{s} * index$ value, record the current u value in the table and increment the index. This s value roughly maps to this u value.
-
-The curve length increment at each $\Delta(u)$ step is approximated using: $|| C(u + \Delta{u}) - C(u)||$. When looking up values, find the index in the table using $index = floor(\frac{s}{\Delta{s}})$ then use the remainder to interpolate between the u values at $u_1 = table(index)$ and $u_2 = table(index + 1)$. Special case: if *index* is at the end of the table use $u_2 = 1$. 
+## Local To Global Transform Metrices and Forward Kinematics
+Forward kinematics are implemented using a local to global coordinate system for each bone.
+Each bone has an associated transformation matrix that defines the position and rotation of the current bone relative to the parent bone. The local to global coordinate matrix is then calculated by chaining these transformation matrices from the current bone to the base bone.\
 \
-For this implementation the choice of $\Delta{s}$ and $\Delta{u}$ had to ensure that a step of $\Delta{u}$ corresponded to a shorter distance than $\Delta{s}$. This was done by observing that the maximum change in s with respect to u is: $max(dS/du) = numPoints \cdot maxSeparation $. Where numPoints is the number of control points, and maxSeparation is the largest distance between two consecutive control points (Estimated using $max(|| \vec{p}_{i+1} - \vec{p}_i||)$. Then we require that $\Delta{u} < du/dS \cdot \Delta{s} = \Delta{s} / (numPoints \cdot maxSeparation)$
-## Velocity profile
-The movement of the cart along the track is simulated by recording the carts current position as $s$, then updating the position using the formula: $s \leftarrow s + speed(s) \cdot \Delta{t}$. Where the $\Delta{t}$ is the time step size (usually the time between frames) and $speed(s)$ is the speed at the current position $s$. This algorithm is accurate assuming: The frame rate does not change much, and the speed does not change significantly from position $s$ to position $s + speed(s) \cdot \Delta{t}$.
-### Lifting Phase
-For this phase the roller coaster cart should move at a steady rate of v_min (minimum velocity). This phase should begin at the start of the curve (U = 0) and end at the highest point on the curve. During the creation of the arc length table, the y value at each position was measured along the curve. The maximum hight *H* along with the s value corresponding to *H* was recorded as s_freefall. If the u value is between 0 and s_freefall then the speed of the cart is set to v_min.
-### Gravity driven phase
-For this phase the roller coasters speed is determined by the conservation of kinetic and potential energy. mass is not changing so we will use they intensive version of the equation (Fun fact: this is a special case of the Bernoulli equation): $$ \frac{v_1^2}{2} + gh_1 = \frac{v_2^2}{2} + gh_2$$
-Setting $h_1$ to be the current height, $h_2$ to be the maximum height *H*, $v_2$ to be the minimum velocity, we get the following: $$ v_1 = \sqrt{2g(H-h) + v_2^2}$$. Thus the velocity of the cart can be calculated using only the hight at its current position.
-### Deceleration
-The deceleration phase is calculated using the a fraction *decel_frac* (usually set to 0.9) it is the u value at which to start decelerating the cart. This fraction is used to calculate the *s* value at which to start decelerating $u_{dec} = decel_{frac} \cdot arcLength$. The deceleration must start at the speed determined by the conservation of energy at position $u_{dec}$, $v_{dec}$ and decelerate to v_min by the end of the curve. This is obtained by the interpolation: $$ speed(s) = v_{dec} + \frac{s - s_{dec}}{arcLength - s_{dec}} \cdot (v_{min} - v_{dec})$$
-This equation is used if the s position is greater than $s_{dec}$
-## Cart and Track Rotation
-The rotation of the cart and track are calculated by finding total acceleration vector and taking its component that is perpendicular to the track. First the curvature and normal of the curve is calculated using the method provided in the Assignment 1 Technical Specifications. Using the centrifugal acceleration formula: $a = \frac{v^2}{r}$, the speed at the current position $v = speed(s)$, and curvature at the position the acceleration vector from curvature is: $\vec{a}_{curve} = k \cdot n \cdot v^2$. Then acceleration due to gravity is added to get the total acceleration: $\vec{a} = \vec{a}_{curve} - \vec{g}$. Then we get the component of this acceleration that is perpendicular to the curve tangent $\vec{a}_{perp} = \vec{a} - (\vec{a} \cdot \vec{T})\vec{T}$. This vector is normalized to get the normal for the rotation matrix $N = \vec{a}_{perp} / ||\vec{a}_{perp}||$. This can then be used to get the Binormal $B = N \times T$. These vectors then form the rotation matrix used to rotate both the cart and the track pieces.
-## Other Stuff
-### Track Supports
-The track supports where placed using a similar method as the track pieces. The only difference being that the normal was fixed to point in the y (up) direction instead of being based on acceleration. Also the supports were scaled in the y-axis based on the heigh at the current position to ensure they were long enough. 
-### Trees
-They are just placed using random positions.
+Forward kinematics is achived by updating the matrices with the new bone length and angle values specified by the user.
+### The tranformation matrix of a specific bone
+The local to global matrix of a bone is defined by a rotation then a translation:
+$$ M_i = M_{i-1} \cdot T_i(d_{i-1},0,0) \cdot R_z(\theta_i)$$
+Where $M_i$ is the transformation matrix for bone i, which is composed of a rotation about $z$ by the angle of bone i and then a translation by the length of the previous bone $i-1$ in the x direction and finaly the transform of the parent bone $M_{i-1}$.
+## Inverse Kinematics with Jacobian Transpose
+Inverse kinematics was done using the algorithm outlined in the Assignment 3 Technical Document. A summary of the algorithm is given bellow. 
+1. While the error is greater than the allowed error do the following:
+2. calculate the position $e = f(\Theta)$
+3. calculate the differenc between the current position and the target $\Delta{e} = e_{target} - e$
+4. calculate the Jacobian $j = \nabla{f(\Theta)}$
+5. Solve for the change in angles that moves the end effector towards the target $ \Delta{\Theta} = SolveDeltaAngles(j, \Delta{e})$
+6. Update the angles $\Theta \leftarrow \Theta + \Delta{\Theta}$
+
+### Jacobian approximation
+Assuming the position of the end effector is given by the function $\vec{e} = f(\Theta)$ where $\Theta = 
+\{\theta{_0}, \theta{_1}, ... , \theta{_n} \} $ The Jacobian is calculated using the following methode:
+$$ j = \left[ \frac{\partial{\vec{f}}}{\partial{\theta{_1}}}, \frac{\partial{\vec{f}}}{\partial{\theta{_2}}}, ... , \frac{\partial{\vec{f}}}{\partial{\theta{_n}}} \right] $$
+Where: 
+$$\frac{\partial{\vec{f}}}{\partial{\theta{_i}}} \approx \frac{\vec{f(..., \theta{_i} + \epsilon, ...)} - \vec{f(..., \theta{_i} - \epsilon, ...)}}{2 \cdot \epsilon}$$
+
+### Solving for the angle update
+The changes in the angles are calculated using the following equation (given in the Assignment 3 Technical Document:
+$$\Delta{\Theta} = \alpha J_\theta^T \Delta{e}$$
+where:
+$$ \alpha = \frac{\Delta{e} \cdot J_\theta J_\theta^T \Delta{e} }{J_\theta J_\theta^T \Delta{e} \cdot J_\theta J_\theta^T \Delta{e}}$$
+
+Here $\alpha$ is calculated as a normalized projection of $\Delta{e}$ on the movement vector $J_\theta^T \Delta{e}$. This ensures that the new angles do not result in the end effector moving by more than the length of $\Delta{e}$.
+## Linear Blend Skinning
+In linear blend skinning, the position of a particular vertex is computed by first converting its rest position from global coordinates to the local coordinates of the bone(s) to which it is attached in their rest position. Then the point transformed by the local to global transform of the bones in their posed position. The formula for a single bone is given bellow:
+
+$$ p' = M_i' M_i^{-1} p $$
+
+Where $p$ is the position of the point in its rest position, $M_i$ is the local to global matrix of bone $i$ in its rest position, $M_i'$ is the local to global matrix of the bone in its current pose position.\
+For linear blend skinning, a points position may be weighted between several bones, each with different associated weights. The equation for transforming a vertex using multiple bones is base on the equation given in the Assignment 3 Technical Document and is shown as follows:
+$$ p' = \sum_{i}w_{ij} \cdot M_i' M_i^{-1} p_j $$
+Where $w_{ij} is the weight of effect of bone $i$ on vertex $j$. Note that the sum of these weights for a particular vertex must be 1 for the operation to remain affine.
+$$\sum_{i} w_{ij} = 1 $$
+
+## Bonus 1: Damped Least Sqaures IK
+For Bonus 1, the damped least squares solver was implemented along with the jacobian transpose for inverse kinematics. The algorithm for inverse kinematics is the same as the one used for the jacobian transpose, but the methode for solving for the angle updates is different and shown bellow:
+$$\Delta{\Theta} = (J_{\theta}^T J_{\Theta} + \lambda^2 I^{n \times n})^{-1} \Delta{e}$$
+Where $\lambda$ is the 'damping' factor. By adding a sufficiently large $\lambda^2$ to the matrix $ J_{\theta}^T J_{\Theta} $ we can ensure that it is diagonally dominant and therefore solvable, this also decreases the maginitude of the column vectors in the resulting inverted matrix which leads to a smaller $\Delta{\Theta}$ jump.  
+
+## Bonus 2: Custom blending weights using Gaussian function
+Along with the provided blending weights, custom bending weights were also calculated for use in the linear blend skinning. The methode used finds the distance from each vertex to each bone, then uses the Gaussian function to compute a weight for each bone. The algorithm used for calculating the distance to each bone is based on the one given in the Assignment 3 Technical Document and is summarized bellow:
+1. For each vertex $v_i$ do:
+2. For each bone $j$ do:
+3. Get the displacement vector from the start of bone $j$ to the start of bone $j+1$: $d = start_{j+1} - start_j$
+4. Get the displacement vector from the vertex to the start of bone $j$: $u = v_i - start_j$
+5. Project the vertex displacement along the bone and normalize by the bone length: $t = \frac{u \cdot d}{d \cdot d}$
+6. If the vertex is behinde the bone ($t < 0$) then the distance is the length of $u$
+7. If the vertex is past the end of the bone ($t > 0$) then the distance is the length of $v_i - start_{j+1}$
+8. If the vertex is beside the bone, then the distance is the normal distance from the bone to the vertex: $||u - t*d||$
+
+Using this distance the guassian can be applied to get the relative weight of this bone on the vertex:
+$$ Gaussian(d_{ij}) = e^{-d_{ij}^2}$$
+Finally these weights must be normalized to get ensure the vertex remains affine after transformation:
+$$w_{ij} = \frac{e^{-d_{ij}^2}}{\sum_{j} e^{-d_{ij}^2}}$$
 # Usage
 ## Building and Running
 To quickly build and run the program it is advised to run the provided shell scripts using the command:
 "./QuickBuild.sh" or "./CleanBuild.sh" these will build and run the program in a single command. \
-**Building**: To build the program navigate to the directory containing "src", "models", "libs", "CMakeLists.txt". Run the command "cmake -B build", then run the command "cmake --build build". The executable will be named "cpsc587_a1_hh" \
-**Running**: Run the command "./build/cpsc587_a1_hh" 
+**Building**: To build the program navigate to the directory containing "src", "models", "libs", "CMakeLists.txt". Run the command "cmake -B build", then run the command "cmake --build build". The executable will be named "cpsc587_a3_hh" \
+**Running**: Run the command "./build/cpsc587_a3_hh" 
 ## Controls
-* **Loading Control points**: This function remains unchanged from the provided Boilerplate. It can still be used to load new roller coaster curve geometries.
-* **Play/Pause**: This function remains unchanged from the provided Boilerplate. Used to start/stop the roller coaster simulation. 
-* **Show Curve/Hide Curve**: This is used to show or hide the control point curve (the debug curve that came with the Boilerplate code). 
-* **Reset View**: This function remains unchanged from the provided Boilerplate. Resets the camera view.
-* **Use Moving Camera/Use Stationary Camera**: pressing "Use Moving Camera" re-centers the camera turntable around the roller coaster cart. pressing "Use Stationary Camera" uses the stationary origin for the turntable center.
-* **Reset Simulation**: Resets the position of the cart to the start of the track.
-* **Number of Carts**: controls the number of carts in the cart train.
-* **Playback Speed**: controls the simulation speed.
-* **Look Ahead**: controls the look ahead distance for calculating the curvature.
-
+* **Use Inverse Kinematics:** This input remains unchanged from the example code. Allows user to activate inverse kinematics.
+* **Max Iterations:** Set the maximum number of solver iterations. Higher numbers result in better accuracy, but lower solver speed.
+* **Tolerance:** Distance from the target position that is considered solved and the solver can stop iterating. 
+* **Finite step (rad):** The distance used for taking the numerical deriviatives when calculating the jacobian.
+* **Solver Type:** What type of solver to use. Select from "Jacobian Transpose" and "Damped Least Squares".
+* **Alpha max:** The maximum distance that the Jacobian Transpose methode is allowed to move the end effector by in a single step.
+* **lambda:** The damping factor used in the Damped Least Squares solver (The square of this value is added to the diagonals of the matrix to ensure it is diagonally dominant and therefore solvable).
+* **Use Skinning Model:** This input remains unchanged from the example code. Allowes user to activate the skinning model instead of the bone model.
+* **Use Custom Calculated Weights:** Switch the weights from the provided pre-calculated weights to custom skinning weights calculated using the Gaussian weight function.
+* **Target Type:** This input remains unchanged from the example code. Allows the user to select a inverse kinematics target from: "Specific", "Animated", "Cursor".
+* **Specific Target Position:** Allows user to set the target position for the Specific target.
+* **Bone Length and angle controls:** This input remains unchanged from the example code. Allows user to set the lengths and angles of the bones for forward kinematics.

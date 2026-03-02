@@ -1,3 +1,12 @@
+/**
+ * CPSC 587 W26 Assignment 3
+ * @name Holden Holzer
+ * @email holden.holzer@ucalgary.ca
+ *
+ * Modified from provided Assignment 3 - Boilerplate
+ * @authors Copyright 2019 Lakin Wecker, Jeremy Hart, Andrew Owens and Others (see AUTHORS)
+ */
+
 // simple_arm.cpp
 #include "simple_arm.hpp"
 
@@ -99,7 +108,7 @@ namespace rigging {
         else
         {
             M = glm::translate(M, glm::vec3(lengths[joint_index - 1], 0.f, 0.f));
-            M = glm::rotate(M, angles[joint_index+1], glm::vec3(0.f,0.f,1));
+            M = glm::rotate(M, angles[joint_index+1], glm::vec3(0.f,0.f,1.0f));
             return globalJointM(joint_index -1) * M;
         }
         return M;
