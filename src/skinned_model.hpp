@@ -26,6 +26,7 @@ namespace skinning {
 			};
 
 			glm::vec3 rest_pos						= { 0.f, 0.f, 0.f };
+			glm::vec3 def_pos						= {0.f, 0.f, 0.f};
 			std::vector<BoneWeight> bone_weights	= {};
 		};
 

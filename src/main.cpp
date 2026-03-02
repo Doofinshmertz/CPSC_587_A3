@@ -58,6 +58,20 @@ private:
 	CursorPosition m_cursor_pos;
 };
 
+void printVertexInfo(skinning::SkinnedModel *model, size_t index)
+{
+	skinning::SkinnedModel::Vertex v = model->vertices[index];
+	printf("x: %7.3f, y: %7.3f, z: %7.3f\n", v.rest_pos.x, v.rest_pos.y, v.rest_pos.z);
+
+	for(size_t i = 0; i < v.bone_weights.size(); i++)
+	{
+		printf("w[%d] = %4.3f, ", v.bone_weights[i].bone_id, v.bone_weights[i].w);
+	}
+
+	printf("\n\n");
+}
+
+
 // program entry point
 int main(void) {
 	// initialize OpenGL and window
@@ -84,6 +98,7 @@ int main(void) {
 
 	rigging::SimpleArm arm; //Default Geometry
 	skinning::SkinnedModel model = skinning::SkinnedModel::loadFromFile("./models/bone_mesh_weights.txt").value();
+	skinning::SkinnedModel output_model = model;
 
 	// --------------------------------
 	glm::vec3 light_pos = { 2.0f, 15.0f, 2.0f };
@@ -103,6 +118,7 @@ int main(void) {
 	// Animation 
 	float t = 0.f;
 	float factor = 1.f;
+	bool rest_mats_setup = false;
 
 	// Actual Target
 	glm::vec3 target = { 0.f, 0.f, 0.f };
@@ -152,7 +168,6 @@ int main(void) {
 		// -------------------- Kinematics -------------------- //
 		// -------------------- ---------- -------------------- //
 		if (imgui_panel::isIK) {
-			// TODO: your IK process(s) should be here
 			if(imgui_panel::solver_type == imgui_panel::SolverType::JT)
 			{
 				arm.moveToPositionJT(target, imgui_panel::epsilon, imgui_panel::tolerance, imgui_panel::max_alpha, static_cast<size_t>(imgui_panel::max_iterations));
@@ -183,10 +198,21 @@ int main(void) {
 			for(size_t i = 0; i < n; i++) arm.lengths[i] = model.bones[i].length;
 			imgui_panel::bone_lengths = arm.lengths;
 
-			// TODO: Calculate tranformations to use below in Update 
+			// pre-calculate the inverse matrices for the rest position
+			if(!rest_mats_setup)
+			{
+				std::cout<<std::flush;
+				arm.SetupRestPositionMatrices();
+				rest_mats_setup = true;
+			}
+
+			std::cout << std::flush;
+			arm.DeformMeshToBones(&model);
+			model_g = model.makeMesh();
 		}
 		else { // Pass input to arm
 			arm.lengths = imgui_panel::bone_lengths;
+			rest_mats_setup = false;
 		}
 		// -------------------- -------- -------------------- //
 		// -------------------- -------- -------------------- //

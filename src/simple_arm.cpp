@@ -315,6 +315,72 @@ namespace rigging {
         return j;
     }
 
+    void SimpleArm::SetupRestPositionMatrices()
+    {
+        // first set the angles to zero and record the resting position transformation matrices of each bone
+        SimpleArm::joint_angles previous_angles = angles;
+        for (size_t i = 0; i < kAngles; i++)
+        {
+            angles[i] = 0.0f;
+        }
+
+        inv_rest_mats.resize(kBones);
+
+        for (size_t i = 0; i < kBones; i++)
+        {
+            inv_rest_mats[i] = glm::inverse(globalJointM(i));
+        }
+
+        // restore the angles
+        angles = previous_angles;
+    }
+
+    void SimpleArm::DeformMeshToBones(skinning::SkinnedModel *model)
+    {
+        // pre-compute the local to world matrices of each bone
+        std::vector<glm::mat4> matrices;
+        matrices.resize(kBones); 
+
+       
+        for(size_t i = 0; i < kBones; i++)
+        {
+            matrices[i] = globalJointM(i);
+        }
+
+       
+        // loop over each vertex and apply the transform
+        for(size_t i = 0; i < model->vertices.size(); i++)
+        {
+           
+            glm::vec4 pos(0.0f);
+            glm::vec3 p = model->vertices[i].rest_pos;
+            glm::vec4 p4;
+            
+          
+            p4.x = p.x;
+            p4.y = p.y;
+            p4.z = p.z;
+            p4.w = 1.0f;
+
+           
+            for(size_t j = 0; j < model->vertices[i].bone_weights.size(); j++)
+            {
+               
+                size_t bone_indx = model->vertices[i].bone_weights[j].bone_id;
+                pos = pos + model->vertices[i].bone_weights[j].w * (matrices[bone_indx] * inv_rest_mats[bone_indx]) * p4;
+               
+            } 
+
+            p.x = pos.x;
+            p.y = pos.y;
+            p.z = pos.z;
+
+          
+
+            model->vertices[i].def_pos = p;
+        }
+    }
+
     void SimpleArm::printJacobian(SimpleArm::jacobian j)
     {
         printf("\n\n\n");

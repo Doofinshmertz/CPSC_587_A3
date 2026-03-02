@@ -3,6 +3,7 @@
 #include <givr.h>
 #include <array>
 #include <glm/fwd.hpp>
+#include "skinned_model.hpp"
 
 namespace rigging {
 	// -----------------------------------------------------------------------------
@@ -117,6 +118,17 @@ namespace rigging {
 		 */
 		jacobian calcJacobian(float epsilon);
 
+
+		/**
+		 * pre-computes the rest inverted position matrices for the bones
+		 */
+		void SetupRestPositionMatrices();
+
+		/**
+		 * deforms the mesh around the bones according to the given bone weights
+		 */
+		void DeformMeshToBones(skinning::SkinnedModel *model);
+
 		// debuggin utility
 		void printJacobian(jacobian j);
 		void printJacobianInv(jacobian_inv j);
@@ -130,5 +142,6 @@ namespace rigging {
 		joint_angles angles;
 		joint_angle_bounds angle_bounds;
 		bone_lengths lengths;
+		std::vector<glm::mat4> inv_rest_mats; // the inverted rest position transformation matrices (pre-computed for skinning)
 	};
 } // namespace rigging

@@ -16,9 +16,9 @@ namespace skinning {
 			const Vertex& c = vertices[f.vc_id];
 			mesh.push_back(
 				givr::geometry::Triangle(
-					givr::geometry::Point1(a.rest_pos),
-					givr::geometry::Point2(b.rest_pos),
-					givr::geometry::Point3(c.rest_pos)
+					givr::geometry::Point1(a.def_pos),
+					givr::geometry::Point2(b.def_pos),
+					givr::geometry::Point3(c.def_pos)
 				)
 			);
 		};
