@@ -341,7 +341,6 @@ namespace rigging {
         std::vector<glm::mat4> matrices;
         matrices.resize(kBones); 
 
-       
         for(size_t i = 0; i < kBones; i++)
         {
             matrices[i] = globalJointM(i);
@@ -351,18 +350,16 @@ namespace rigging {
         // loop over each vertex and apply the transform
         for(size_t i = 0; i < model->vertices.size(); i++)
         {
-           
+            // convert the position to affine coordinate
             glm::vec4 pos(0.0f);
             glm::vec3 p = model->vertices[i].rest_pos;
             glm::vec4 p4;
-            
-          
             p4.x = p.x;
             p4.y = p.y;
             p4.z = p.z;
             p4.w = 1.0f;
 
-           
+            // calculate new vector for each weight
             for(size_t j = 0; j < model->vertices[i].bone_weights.size(); j++)
             {
                
@@ -371,14 +368,113 @@ namespace rigging {
                
             } 
 
-            p.x = pos.x;
-            p.y = pos.y;
-            p.z = pos.z;
-
-          
+            // ensures that this is an affine operation (sum of weights is 1)
+            float correction = 1.0f / pos.w;
+            p.x = pos.x * correction;
+            p.y = pos.y * correction;
+            p.z = pos.z * correction;
 
             model->vertices[i].def_pos = p;
         }
+    }
+
+    void SimpleArm::CalculateWeights(skinning::SkinnedModel *model)
+    {
+        // set the bones to the lengths required by the model
+        const size_t n = std::min(model->bones.size(), lengths.size());
+        for (size_t i = 0; i < n; i++)
+        {
+            lengths[i] = model->bones[i].length;
+        }
+
+        // first set the angles to zero and record the resting position transformation matrices of each bone
+        SimpleArm::joint_angles previous_angles = angles;
+        for (size_t i = 0; i < kAngles; i++)
+        {
+            angles[i] = 0.0f;
+        }
+
+        // record the position of the start and end of each bone
+        std::vector<glm::vec3> bone_positions;
+        // position i is the start of bone i and end of bone i-1, we need k+1 positions for the start and end of all k bones
+        // the end effector is the end position of the last bone
+        bone_positions.resize(kBones + 1);
+
+        // the vector difference between the end and start of each bone
+        std::vector<glm::vec3> bone_d_values;
+        std::vector<float> bone_len_sq; // the length of the bones squared
+        bone_d_values.resize(kBones);
+        bone_len_sq.resize(kBones);
+
+        // set the position of each bone (the position of the next bone is the end position of the current bone)
+        for(size_t i = 0; i < kBones; i++)
+        {
+            bone_positions[i] = jointPosition(i);
+        }
+
+        // the end of the last bone is the end effector position
+        bone_positions[kBones] = endEffectorPosition();
+
+        // calculate the displacement values of each bone
+        for(size_t i = 0; i < kBones; i++)
+        {
+            bone_d_values[i] = bone_positions[i+1] - bone_positions[i];
+            bone_len_sq[i] = glm::dot(bone_d_values[i], bone_d_values[i]);
+        }
+
+        // for each vertex, calculate the effect from each bone
+        for(size_t i = 0; i < model->vertices.size(); i++)
+        {
+            // the following algorithm is based on that which is shown in the Assignment 03 - Technical Specifications
+            // ensure there are kBones number of weights for each vertex
+            model->vertices[i].bone_weights.resize(kBones);
+
+            // get the rest position
+            glm::vec3 p = model->vertices[i].rest_pos;
+
+            // the sum of the weights (will be used for normalization latter)
+            float weight_sum = 0; 
+
+            // get weight of each bone
+            for(size_t j = 0; j < kBones; j++)
+            {
+                float w = 0.0f;
+                // the position relative to the start of the bone
+                glm::vec3 u = p - bone_positions[j];
+                // the projected distance along the bone
+                float t = glm::dot(u, bone_d_values[j]) / (bone_len_sq[j]);
+                if(t < 0.0f)
+                {
+                    // behinde the bone, return the distance from the start of the bone
+                    w = glm::length(u);
+                }
+                else if(t > 1.0f)
+                {
+                    // past the end, return the distance past the end of the bone
+                    w = glm::length(p - bone_positions[j+1]);
+                }
+                else
+                {
+                    w = glm::length(u - t*bone_d_values[j]);
+                }
+
+                // apply dropoff function
+                w = std::exp((w*w)*(-1.0f));
+                weight_sum += w;
+                // store the new weight
+                model->vertices[i].bone_weights[j].w = w;
+                model->vertices[i].bone_weights[j].bone_id = j;
+            }
+
+            // normalize the weights
+            for(size_t j = 0; j < kBones; j++)
+            {
+                model->vertices[i].bone_weights[j].w = model->vertices[i].bone_weights[j].w / weight_sum;
+            }
+        }
+
+        // reset the angles to their original values
+        angles = previous_angles;
     }
 
     void SimpleArm::printJacobian(SimpleArm::jacobian j)

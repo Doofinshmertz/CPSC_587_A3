@@ -11,6 +11,7 @@ namespace imgui_panel {
 	float epsilon = 0.001f;
 	float max_alpha = 10.0f;
 	float lambda = 0.5f;
+	bool use_custom_weights = false;
 	SolverType solver_type = SolverType::JT;
 
 	// rig
@@ -76,6 +77,7 @@ namespace imgui_panel {
 
 
 			ImGui::Checkbox("Use Skinning Model", &isLBS);
+			ImGui::Checkbox("Use Custom Calculated Weights", &use_custom_weights);
 
 			ImGui::Spacing();
 			ImGui::Separator();

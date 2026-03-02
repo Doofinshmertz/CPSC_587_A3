@@ -129,6 +129,11 @@ namespace rigging {
 		 */
 		void DeformMeshToBones(skinning::SkinnedModel *model);
 
+		/**
+		 * assign custom weights to the mesh
+		 */
+		void CalculateWeights(skinning::SkinnedModel *model);
+
 		// debuggin utility
 		void printJacobian(jacobian j);
 		void printJacobianInv(jacobian_inv j);

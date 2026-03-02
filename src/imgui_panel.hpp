@@ -38,4 +38,5 @@ namespace imgui_panel {
 	extern float epsilon;
 	extern float max_alpha;
 	extern float lambda;
+	extern bool use_custom_weights;
 } // namespace panel

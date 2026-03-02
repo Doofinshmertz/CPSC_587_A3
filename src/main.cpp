@@ -98,8 +98,9 @@ int main(void) {
 
 	rigging::SimpleArm arm; //Default Geometry
 	skinning::SkinnedModel model = skinning::SkinnedModel::loadFromFile("./models/bone_mesh_weights.txt").value();
-	skinning::SkinnedModel output_model = model;
-
+	skinning::SkinnedModel custom_model = model;
+	arm.CalculateWeights(&custom_model);
+	
 	// --------------------------------
 	glm::vec3 light_pos = { 2.0f, 15.0f, 2.0f };
 
@@ -207,8 +208,16 @@ int main(void) {
 			}
 
 			std::cout << std::flush;
-			arm.DeformMeshToBones(&model);
-			model_g = model.makeMesh();
+			if(imgui_panel::use_custom_weights)
+			{
+				arm.DeformMeshToBones(&custom_model);
+				model_g = custom_model.makeMesh();
+			}
+			else
+			{
+				arm.DeformMeshToBones(&model);
+				model_g = model.makeMesh();
+			}
 		}
 		else { // Pass input to arm
 			arm.lengths = imgui_panel::bone_lengths;
